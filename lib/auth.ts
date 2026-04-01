@@ -64,7 +64,7 @@ export const useAuth = create<AuthState>((set) => ({
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
           scopes: 'repo read:user',
         },
       });

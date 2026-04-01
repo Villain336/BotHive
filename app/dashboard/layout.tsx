@@ -21,8 +21,7 @@ import { useState, useEffect } from 'react';
 const sidebarItems = [
   { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
   { icon: FolderGit2, label: 'Projects', href: '/dashboard/projects' },
-  { icon: MessageSquare, label: 'Chat', href: '/dashboard/chat' },
-  { icon: Shield, label: 'Compliance', href: '/dashboard/compliance' },
+  { icon: MessageSquare, label: 'Chat History', href: '/dashboard/chat' },
   { icon: CreditCard, label: 'Billing', href: '/dashboard/settings/billing' },
   { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
 ];

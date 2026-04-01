@@ -4,6 +4,9 @@
 
 // Mock all external deps before imports
 jest.mock('@octokit/rest', () => ({ Octokit: jest.fn() }));
+jest.mock('@/lib/usage', () => ({
+  checkProjectLimit: jest.fn().mockResolvedValue({ allowed: true }),
+}));
 
 const mockSelect = jest.fn().mockReturnThis();
 const mockEq = jest.fn().mockReturnThis();

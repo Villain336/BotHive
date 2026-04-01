@@ -5,6 +5,7 @@ import { parseGitHubUrl, getRepoTree, getMultipleFiles } from '@/lib/github';
 import { runFullScan } from '@/lib/scanners';
 import type { RepoContext } from '@/lib/scanners/types';
 import { randomUUID } from 'crypto';
+import { checkScanLimit } from '@/lib/usage';
 
 const CONFIG_FILES = [
   'package.json', '.gitignore', 'next.config.js', 'next.config.mjs', 'next.config.ts',
@@ -73,6 +74,12 @@ export async function POST(
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check scan limit
+    const scanLimit = await checkScanLimit(user.id);
+    if (!scanLimit.allowed) {
+      return NextResponse.json({ error: scanLimit.reason }, { status: 429 });
     }
 
     // Get project

@@ -222,6 +222,123 @@ export default function Home() {
         </div>
       </motion.div>
 
+      {/* Comparison Section */}
+      <motion.div
+        className="py-24 sm:py-32 bg-secondary/30"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeIn}
+      >
+        <div className="mx-auto max-w-4xl px-6 lg:px-8">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12">
+            ShipReady vs. doing it yourself
+          </h2>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="font-medium text-muted-foreground py-3 border-b">Task</div>
+            <div className="font-medium text-center py-3 border-b">Manual</div>
+            <div className="font-medium text-center py-3 border-b text-primary">With ShipReady</div>
+            {[
+              ['Write unit tests for 20 files', '2-3 days', '10 minutes'],
+              ['Security audit (OWASP)', '1-2 days', '2 minutes'],
+              ['Privacy policy + ToS', '4-8 hours', '5 minutes'],
+              ['CI/CD pipeline setup', '2-4 hours', '3 minutes'],
+              ['Docker + health checks', '1-2 hours', '2 minutes'],
+              ['Find and fix all gaps', 'Weeks', 'One chat session'],
+            ].map(([task, manual, shipready]) => (
+              <div key={task} className="contents">
+                <div className="py-3 border-b">{task}</div>
+                <div className="py-3 border-b text-center text-muted-foreground">{manual}</div>
+                <div className="py-3 border-b text-center font-medium text-primary">{shipready}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Demo Section */}
+      <motion.div
+        className="py-24 sm:py-32"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={staggerContainer}
+      >
+        <div className="mx-auto max-w-5xl px-6 lg:px-8">
+          <motion.div className="text-center mb-12" variants={fadeIn}>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              See it in action
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Here's what a real ShipReady session looks like
+            </p>
+          </motion.div>
+          <motion.div variants={fadeIn}>
+            <Card className="overflow-hidden border-2">
+              <div className="bg-muted/50 px-4 py-2 border-b flex items-center gap-2">
+                <div className="flex gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-red-400" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                  <div className="w-3 h-3 rounded-full bg-green-400" />
+                </div>
+                <span className="text-xs text-muted-foreground ml-2">ShipReady - Testing Expert</span>
+              </div>
+              <CardContent className="p-6 space-y-4 font-mono text-sm">
+                <div className="flex gap-3">
+                  <span className="text-primary font-bold shrink-0">You:</span>
+                  <span>My app has no tests. Help me get started.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-blue-500 font-bold shrink-0">AI:</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      Reading package.json...
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      Listing app/api/ routes...
+                    </div>
+                    <p>I found 8 API routes with zero test coverage. Let me generate tests for your most critical route first:</p>
+                    <div className="rounded-md bg-background border p-3 text-xs">
+                      <div className="text-muted-foreground mb-1">__tests__/api/auth/route.test.ts</div>
+                      <pre className="text-green-400">+ describe('/api/auth', () =&gt; {'{'}<br/>+   it('returns 401 for unauthenticated', ...)<br/>+   it('creates session on valid login', ...)<br/>+ {'}'});</pre>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="inline-flex items-center rounded bg-primary/10 text-primary text-xs px-2 py-1">Apply Fix</span>
+                      <span className="inline-flex items-center rounded bg-muted text-muted-foreground text-xs px-2 py-1">Copy</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Stats Section */}
+      <motion.div
+        className="py-16 bg-secondary/30"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeIn}
+      >
+        <div className="mx-auto max-w-4xl px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {[
+            { value: '4', label: 'Compliance categories' },
+            { value: '<2min', label: 'Time to first scan' },
+            { value: '100+', label: 'Checks per scan' },
+            { value: '1-click', label: 'Fix application' },
+          ].map((stat) => (
+            <div key={stat.label}>
+              <div className="text-3xl font-bold text-primary">{stat.value}</div>
+              <div className="text-sm text-muted-foreground mt-1">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
       {/* CTA Section */}
       <motion.div
         className="py-24 sm:py-32 bg-secondary/30"

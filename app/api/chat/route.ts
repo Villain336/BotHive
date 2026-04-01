@@ -13,6 +13,7 @@ import {
   createPullRequest,
 } from '@/lib/github';
 import type { ScanCategory } from '@/lib/types';
+import { checkMessageLimit } from '@/lib/usage';
 import type Anthropic from '@anthropic-ai/sdk';
 
 const MAX_TOOL_ITERATIONS = 10;
@@ -30,6 +31,15 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check message limit
+    const msgLimit = await checkMessageLimit(user.id);
+    if (!msgLimit.allowed) {
+      return new Response(JSON.stringify({ error: msgLimit.reason }), {
+        status: 429,
         headers: { 'Content-Type': 'application/json' },
       });
     }

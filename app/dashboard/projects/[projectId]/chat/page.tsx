@@ -20,6 +20,7 @@ export default function ChatPage() {
   const searchParams = useSearchParams();
   const projectId = params.projectId as string;
   const findingId = searchParams.get('finding');
+  const conversationParam = searchParams.get('conversation');
 
   const [selectedCategory, setSelectedCategory] = useState<ScanCategory | 'general'>('general');
 
@@ -59,6 +60,7 @@ export default function ChatPage() {
       <ChatInterface
         projectId={projectId}
         category={selectedCategory}
+        conversationId={conversationParam || undefined}
         initialMessage={
           findingId
             ? `I have a compliance finding I need help fixing. The finding ID is ${findingId}. Can you help me understand and fix it?`

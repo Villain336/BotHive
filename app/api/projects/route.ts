@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import { parseGitHubUrl } from '@/lib/github';
+import { checkProjectLimit } from '@/lib/usage';
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,6 +38,12 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check project limit
+    const projLimit = await checkProjectLimit(user.id);
+    if (!projLimit.allowed) {
+      return NextResponse.json({ error: projLimit.reason }, { status: 429 });
     }
 
     const body = await request.json();
