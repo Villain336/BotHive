@@ -10,6 +10,9 @@ const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/e2e/'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(@octokit|universal-user-agent|before-after-hook)/)',
+  ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     '!app/**/*.d.ts',
