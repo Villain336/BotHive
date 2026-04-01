@@ -1,17 +1,36 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChatMessage } from './chat-message';
 import { ChatInput } from './chat-input';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TestTube2, Lock, Scale, Server, MessageSquare } from 'lucide-react';
 import type { ScanCategory } from '@/lib/types';
 
-interface Message {
+// Structured block types for rich message rendering
+export interface ChatBlock {
+  id: string;
+  type: 'text' | 'tool_start' | 'tool_result' | 'code_suggestion' | 'applied_fix';
+  content: string;
+  metadata?: {
+    tool?: string;
+    tool_call_id?: string;
+    input?: Record<string, unknown>;
+    result?: string;
+    is_error?: boolean;
+    file_path?: string;
+    language?: string;
+    description?: string;
+    branch?: string;
+    pr_url?: string;
+    status?: 'running' | 'done' | 'error';
+  };
+}
+
+export interface Message {
   id: string;
   role: 'user' | 'assistant';
-  content: string;
+  blocks: ChatBlock[];
 }
 
 interface ChatInterfaceProps {
@@ -41,9 +60,13 @@ export function ChatInterface({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitial = useRef(false);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     if (initialMessage && !hasSentInitial.current) {
@@ -52,22 +75,38 @@ export function ChatInterface({
     }
   }, [initialMessage]);
 
+  // Helper to update blocks in the current assistant message
+  function updateAssistantBlocks(
+    updater: (blocks: ChatBlock[]) => ChatBlock[]
+  ) {
+    setMessages((prev) => {
+      const updated = [...prev];
+      const last = updated[updated.length - 1];
+      if (last?.role === 'assistant') {
+        last.blocks = updater([...last.blocks]);
+      }
+      return [...updated];
+    });
+  }
+
   async function sendMessage(content: string) {
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content,
+      blocks: [{ id: crypto.randomUUID(), type: 'text', content }],
     };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
 
     const assistantMsg: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: '',
+      blocks: [],
     };
-    setMessages((prev) => [...prev, assistantMsg]);
+
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setIsLoading(true);
+
+    // Track the current text block ID so deltas append to it
+    let currentTextBlockId: string | null = null;
 
     try {
       const response = await fetch('/api/chat', {
@@ -81,9 +120,7 @@ export function ChatInterface({
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Chat request failed');
-      }
+      if (!response.ok) throw new Error('Chat request failed');
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
@@ -103,55 +140,144 @@ export function ChatInterface({
           if (!line.startsWith('data: ')) continue;
           try {
             const data = JSON.parse(line.slice(6));
-
-            if (data.type === 'text') {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === 'assistant') {
-                  last.content += data.content;
-                }
-                return updated;
-              });
-            } else if (data.type === 'suggestion') {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === 'assistant') {
-                  last.content += `\n\n**Suggested fix for \`${data.file_path}\`:**\n${data.description}\n\n\`\`\`\n${data.content}\n\`\`\``;
-                }
-                return updated;
-              });
-            } else if (data.type === 'done') {
-              if (data.conversation_id) {
-                setConversationId(data.conversation_id);
-              }
-            } else if (data.type === 'error') {
-              setMessages((prev) => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last.role === 'assistant') {
-                  last.content = `Error: ${data.message}`;
-                }
-                return updated;
-              });
-            }
+            handleSSEEvent(data);
           } catch {
-            // Skip malformed SSE data
+            // Skip malformed SSE
           }
         }
       }
-    } catch (error) {
-      setMessages((prev) => {
-        const updated = [...prev];
-        const last = updated[updated.length - 1];
-        if (last.role === 'assistant') {
-          last.content = 'Sorry, something went wrong. Please try again.';
-        }
-        return updated;
-      });
+    } catch {
+      updateAssistantBlocks((blocks) => [
+        ...blocks,
+        {
+          id: crypto.randomUUID(),
+          type: 'text',
+          content: 'Something went wrong. Please try again.',
+        },
+      ]);
     } finally {
       setIsLoading(false);
+      currentTextBlockId = null;
+    }
+
+    function handleSSEEvent(data: Record<string, unknown>) {
+      switch (data.type) {
+        case 'text_delta': {
+          const text = data.content as string;
+          if (!currentTextBlockId) {
+            currentTextBlockId = crypto.randomUUID();
+            updateAssistantBlocks((blocks) => [
+              ...blocks,
+              { id: currentTextBlockId!, type: 'text', content: text },
+            ]);
+          } else {
+            const blockId = currentTextBlockId;
+            updateAssistantBlocks((blocks) =>
+              blocks.map((b) =>
+                b.id === blockId ? { ...b, content: b.content + text } : b
+              )
+            );
+          }
+          break;
+        }
+
+        case 'tool_start': {
+          // A tool call starts — stop appending to current text block
+          currentTextBlockId = null;
+          const blockId = crypto.randomUUID();
+          updateAssistantBlocks((blocks) => [
+            ...blocks,
+            {
+              id: blockId,
+              type: 'tool_start',
+              content: '',
+              metadata: {
+                tool: data.tool as string,
+                tool_call_id: data.tool_call_id as string,
+                input: data.input as Record<string, unknown>,
+                status: 'running',
+              },
+            },
+          ]);
+          break;
+        }
+
+        case 'tool_result': {
+          const toolCallId = data.tool_call_id as string;
+          updateAssistantBlocks((blocks) =>
+            blocks.map((b) =>
+              b.metadata?.tool_call_id === toolCallId
+                ? {
+                    ...b,
+                    type: 'tool_result' as const,
+                    metadata: {
+                      ...b.metadata,
+                      result: data.result as string,
+                      is_error: data.is_error as boolean,
+                      status: (data.is_error ? 'error' : 'done') as 'error' | 'done',
+                    },
+                  }
+                : b
+            )
+          );
+          break;
+        }
+
+        case 'code_suggestion': {
+          currentTextBlockId = null;
+          updateAssistantBlocks((blocks) => [
+            ...blocks,
+            {
+              id: crypto.randomUUID(),
+              type: 'code_suggestion',
+              content: data.content as string,
+              metadata: {
+                file_path: data.file_path as string,
+                language: data.language as string,
+                description: data.description as string,
+              },
+            },
+          ]);
+          break;
+        }
+
+        case 'applied_fix': {
+          currentTextBlockId = null;
+          updateAssistantBlocks((blocks) => [
+            ...blocks,
+            {
+              id: crypto.randomUUID(),
+              type: 'applied_fix',
+              content: '',
+              metadata: {
+                file_path: data.file_path as string,
+                branch: data.branch as string,
+                pr_url: data.pr_url as string | undefined,
+              },
+            },
+          ]);
+          break;
+        }
+
+        case 'done': {
+          if (data.conversation_id) {
+            setConversationId(data.conversation_id as string);
+          }
+          break;
+        }
+
+        case 'error': {
+          updateAssistantBlocks((blocks) => [
+            ...blocks,
+            {
+              id: crypto.randomUUID(),
+              type: 'text',
+              content: `Error: ${data.message}`,
+            },
+          ]);
+          break;
+        }
+      }
     }
   }
 
@@ -174,7 +300,8 @@ export function ChatInterface({
             <Icon className={`h-12 w-12 ${info.color} mb-4 opacity-50`} />
             <h3 className="text-lg font-medium mb-2">Chat with {info.label}</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              Ask me to help fix compliance findings, generate tests, review security, or create legal documents for your project.
+              I can read your code, find issues, generate fixes, and apply them directly via PR.
+              Ask me anything about making your project production-ready.
             </p>
           </div>
         )}
@@ -182,8 +309,13 @@ export function ChatInterface({
           <ChatMessage
             key={msg.id}
             role={msg.role}
-            content={msg.content}
-            isStreaming={isLoading && msg.role === 'assistant' && msg === messages[messages.length - 1]}
+            blocks={msg.blocks}
+            projectId={projectId}
+            isStreaming={
+              isLoading &&
+              msg.role === 'assistant' &&
+              msg === messages[messages.length - 1]
+            }
           />
         ))}
         <div ref={messagesEndRef} />

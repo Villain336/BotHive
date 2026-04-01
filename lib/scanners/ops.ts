@@ -142,6 +142,79 @@ export function analyzeOps(ctx: RepoContext): ScanResult {
     score -= 5;
   }
 
+  // Deep check: CI pipeline completeness
+  const ciWorkflowEntries = Object.entries(ctx.fileContents).filter(([path]) =>
+    /\.github\/workflows\/.*\.ya?ml$/.test(path)
+  );
+  if (ciWorkflowEntries.length > 0) {
+    // Combine all workflow contents to check for steps across all workflows
+    const combinedCI = ciWorkflowEntries.map(([, content]) => content).join('\n').toLowerCase();
+    const ciSteps: { name: string; patterns: RegExp[]; severity: 'low' | 'medium' }[] = [
+      { name: 'checkout', patterns: [/actions\/checkout/], severity: 'low' },
+      { name: 'install', patterns: [/npm ci\b/, /npm install\b/, /yarn install\b/, /pnpm install\b/], severity: 'medium' },
+      { name: 'lint', patterns: [/\blint\b/, /eslint/], severity: 'low' },
+      { name: 'test', patterns: [/\btest\b/, /jest/, /vitest/, /pytest/], severity: 'medium' },
+      { name: 'build', patterns: [/\bbuild\b/, /next build/, /tsc/], severity: 'medium' },
+    ];
+    for (const step of ciSteps) {
+      const found = step.patterns.some((p) => p.test(combinedCI));
+      if (!found) {
+        findings.push({
+          category: 'ops',
+          severity: step.severity,
+          title: `CI pipeline missing "${step.name}" step`,
+          description: `No "${step.name}" step detected in your GitHub Actions workflows.`,
+          fix_suggestion: `Add a "${step.name}" step to your CI pipeline to ensure code quality.`,
+        });
+        score -= step.severity === 'medium' ? 5 : 3;
+      }
+    }
+  }
+
+  // Deep check: Dockerfile best practices
+  const dockerfileContent = ctx.fileContents['Dockerfile'] || '';
+  if (dockerfileContent) {
+    // Check for multi-stage build
+    const fromStatements = (dockerfileContent.match(/^FROM\s+/gmi) || []).length;
+    if (fromStatements < 2) {
+      findings.push({
+        category: 'ops',
+        severity: 'low',
+        title: 'Dockerfile not using multi-stage build',
+        description: 'Dockerfile has a single FROM stage. Multi-stage builds reduce image size by separating build and runtime.',
+        file_path: 'Dockerfile',
+        fix_suggestion: 'Use a multi-stage Dockerfile: one stage for building and one for the runtime image to reduce final image size.',
+      });
+      score -= 3;
+    }
+
+    // Check for non-root USER directive
+    if (!/^USER\s+/mi.test(dockerfileContent)) {
+      findings.push({
+        category: 'ops',
+        severity: 'medium',
+        title: 'Dockerfile runs as root',
+        description: 'No USER directive found in Dockerfile. Running containers as root is a security risk.',
+        file_path: 'Dockerfile',
+        fix_suggestion: 'Add a USER directive (e.g., USER node or USER 1001) to run the container as a non-root user.',
+      });
+      score -= 5;
+    }
+
+    // Check for .dockerignore
+    const hasDockerignore = allPaths.some((p) => p === '.dockerignore');
+    if (!hasDockerignore) {
+      findings.push({
+        category: 'ops',
+        severity: 'low',
+        title: 'No .dockerignore file',
+        description: 'No .dockerignore file found. Without it, unnecessary files (node_modules, .git) are copied into the Docker context.',
+        fix_suggestion: 'Create a .dockerignore file to exclude node_modules, .git, .env, and other unnecessary files from the Docker build context.',
+      });
+      score -= 3;
+    }
+  }
+
   return {
     category: 'ops',
     score: Math.max(0, score),

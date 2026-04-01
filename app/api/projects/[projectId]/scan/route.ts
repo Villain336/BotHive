@@ -6,13 +6,58 @@ import { runFullScan } from '@/lib/scanners';
 import type { RepoContext } from '@/lib/scanners/types';
 import { randomUUID } from 'crypto';
 
-const KEY_FILES = [
+const CONFIG_FILES = [
   'package.json', '.gitignore', 'next.config.js', 'next.config.mjs', 'next.config.ts',
   'middleware.ts', 'middleware.js', '.env.example', 'Dockerfile',
   'docker-compose.yml', 'docker-compose.yaml', '.dockerignore',
   'jest.config.js', 'jest.config.ts', 'vitest.config.ts', 'vitest.config.js',
   'tsconfig.json', '.eslintrc.json', '.eslintrc.js',
+  'playwright.config.ts', 'playwright.config.js',
+  'codecov.yml', '.codecov.yml', '.nycrc', '.nycrc.json',
 ];
+
+const MAX_FILE_SIZE = 50_000; // 50KB per file
+const DEEP_SCAN_FILE_LIMIT = 50;
+const BASIC_SCAN_FILE_LIMIT = 5;
+
+// Priority patterns for deep scanning (ordered by importance)
+const DEEP_SCAN_PATTERNS = [
+  /^app\/api\/.*\.(ts|js)$/,            // API routes (security analysis)
+  /^middleware\.(ts|js)$/,               // Middleware (auth analysis)
+  /\.(test|spec)\.[jt]sx?$/,            // Test files (test quality)
+  /^\.github\/workflows\/.*\.ya?ml$/,   // CI configs
+  /^(src|app|pages)\/.*\.(ts|tsx)$/,    // Source files
+];
+
+function selectFilesForDeepScan(
+  files: { path: string; type: string; size: number }[],
+  tier: string
+): string[] {
+  const limit = ['pro', 'team'].includes(tier)
+    ? DEEP_SCAN_FILE_LIMIT
+    : BASIC_SCAN_FILE_LIMIT;
+
+  const selected: string[] = [];
+  const sourceFiles = files.filter(
+    (f) => f.type === 'file' && f.size < MAX_FILE_SIZE &&
+    !f.path.includes('node_modules') &&
+    !f.path.includes('.next') &&
+    !f.path.includes('dist/')
+  );
+
+  // Add files by priority pattern
+  for (const pattern of DEEP_SCAN_PATTERNS) {
+    if (selected.length >= limit) break;
+    for (const file of sourceFiles) {
+      if (selected.length >= limit) break;
+      if (pattern.test(file.path) && !selected.includes(file.path)) {
+        selected.push(file.path);
+      }
+    }
+  }
+
+  return selected;
+}
 
 export async function POST(
   request: NextRequest,
@@ -75,15 +120,30 @@ export async function POST(
       .update({ github_default_branch: tree.defaultBranch })
       .eq('id', projectId);
 
-    // Get key file contents
-    const existingKeyFiles = KEY_FILES.filter((kf) =>
+    // Get user's subscription tier for tiered scanning depth
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .single();
+    const tier = userProfile?.subscription_tier || 'trial';
+
+    // Fetch config files
+    const existingConfigFiles = CONFIG_FILES.filter((kf) =>
       tree.files.some((f) => f.path === kf)
     );
+
+    // Select additional files for deep scanning based on plan tier
+    const deepScanFiles = selectFilesForDeepScan(tree.files, tier);
+
+    // Merge and deduplicate
+    const allFilesToFetch = Array.from(new Set([...existingConfigFiles, ...deepScanFiles]));
+
     const fileContents = await getMultipleFiles(
       octokit,
       parsed.owner,
       parsed.repo,
-      existingKeyFiles,
+      allFilesToFetch,
       tree.defaultBranch
     );
 

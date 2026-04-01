@@ -151,6 +151,95 @@ export function analyzeTests(ctx: RepoContext): ScanResult {
     score -= 10;
   }
 
+  // Deep check: Assertion density in test files
+  const testFileContents = Object.entries(ctx.fileContents).filter(([path]) =>
+    TEST_FILE_PATTERNS.some((p) => p.test(path))
+  );
+  if (testFileContents.length > 0) {
+    let totalTests = 0;
+    let totalAssertions = 0;
+    for (const [, content] of testFileContents) {
+      const itCount = (content.match(/\bit\s*\(/g) || []).length;
+      const testCount = (content.match(/\btest\s*\(/g) || []).length;
+      const expectCount = (content.match(/\bexpect\s*\(/g) || []).length;
+      totalTests += itCount + testCount;
+      totalAssertions += expectCount;
+    }
+    if (totalTests > 0 && totalAssertions / totalTests < 1) {
+      findings.push({
+        category: 'testing',
+        severity: 'medium',
+        title: 'Low assertion density',
+        description: `Average assertions per test is ${(totalAssertions / totalTests).toFixed(2)} (${totalAssertions} assertions across ${totalTests} tests). Each test should have at least one assertion.`,
+        fix_suggestion: 'Add expect() assertions to your tests to verify behavior. Tests without assertions provide false confidence.',
+      });
+      score -= 10;
+    }
+  }
+
+  // Deep check: API route test coverage
+  const apiRouteFiles = ctx.files.filter((f) =>
+    f.type === 'file' && /app\/api\//.test(f.path) && /route\.[jt]sx?$/.test(f.path)
+  );
+  if (apiRouteFiles.length > 0) {
+    let untestedRoutes = 0;
+    for (const routeFile of apiRouteFiles) {
+      const routeSegment = routeFile.path.replace(/^.*app\/api\//, '').replace(/\/route\.[jt]sx?$/, '');
+      const hasCorrespondingTest = allFiles.some((f) =>
+        f.path.includes('__tests__/api/' + routeSegment) && /\.(test|spec)\.[jt]sx?$/.test(f.path)
+      );
+      if (!hasCorrespondingTest) {
+        untestedRoutes++;
+      }
+    }
+    if (untestedRoutes / apiRouteFiles.length > 0.5) {
+      findings.push({
+        category: 'testing',
+        severity: 'high',
+        title: 'API routes missing tests',
+        description: `${untestedRoutes} of ${apiRouteFiles.length} API routes have no corresponding test files in __tests__/api/.`,
+        fix_suggestion: 'Create test files for your API routes in __tests__/api/ to verify request handling, validation, and responses.',
+      });
+      score -= 15;
+    }
+  }
+
+  // Deep check: Testing framework mismatch
+  const hasJestConfig = allFiles.some((f) =>
+    /jest\.config\.[jt]sx?$|jest\.config\.mjs$/.test(f.path)
+  );
+  const hasVitestConfig = allFiles.some((f) =>
+    /vitest\.config\.[jt]sx?$/.test(f.path)
+  );
+  if (ctx.packageJson) {
+    const deps = {
+      ...(ctx.packageJson.dependencies as Record<string, string> || {}),
+      ...(ctx.packageJson.devDependencies as Record<string, string> || {}),
+    };
+    const hasVitestDep = !!deps['vitest'];
+    const hasJestDep = !!deps['jest'];
+    if (hasJestConfig && hasVitestDep && !hasVitestConfig) {
+      findings.push({
+        category: 'testing',
+        severity: 'medium',
+        title: 'Testing framework mismatch',
+        description: 'Found jest.config but vitest is listed as a dependency. This may cause confusion about which test runner to use.',
+        fix_suggestion: 'Align your test runner: either migrate to vitest and remove jest.config, or remove vitest from dependencies.',
+      });
+      score -= 5;
+    }
+    if (hasVitestConfig && hasJestDep && !hasJestConfig) {
+      findings.push({
+        category: 'testing',
+        severity: 'medium',
+        title: 'Testing framework mismatch',
+        description: 'Found vitest.config but jest is listed as a dependency. This may cause confusion about which test runner to use.',
+        fix_suggestion: 'Align your test runner: either migrate to jest and remove vitest.config, or remove jest from dependencies.',
+      });
+      score -= 5;
+    }
+  }
+
   return {
     category: 'testing',
     score: Math.max(0, score),

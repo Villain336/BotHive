@@ -141,6 +141,60 @@ export function analyzeSecurity(ctx: RepoContext): ScanResult {
     score -= 5;
   }
 
+  // Deep check: Input validation in API routes
+  for (const [path, content] of Object.entries(ctx.fileContents)) {
+    if (!path.includes('app/api/') || !/route\.[jt]sx?$/.test(path)) continue;
+    const hasValidation = /import\s+.*(?:zod|joi|yup|z\s+from\s+['"]zod|Joi\s+from\s+['"]joi|yup\s+from\s+['"]yup)/i.test(content) ||
+      /from\s+['"](?:zod|joi|yup)['"]/i.test(content);
+    if (!hasValidation) {
+      findings.push({
+        category: 'security',
+        severity: 'high',
+        title: 'API route missing input validation',
+        description: `${path} does not import a validation library (zod, joi, or yup). Unvalidated input can lead to injection attacks.`,
+        file_path: path,
+        fix_suggestion: 'Add input validation using zod, joi, or yup to validate request body and query parameters.',
+      });
+      score -= 10;
+    }
+  }
+
+  // Deep check: Auth middleware check
+  const middlewareContent = ctx.fileContents['middleware.ts'] || ctx.fileContents['middleware.js'] || '';
+  if (middlewareContent) {
+    const authPatterns = /getSession|getUser|getToken|auth\(|withAuth|getAuth|session|token|verify|authenticated/i;
+    if (!authPatterns.test(middlewareContent)) {
+      findings.push({
+        category: 'security',
+        severity: 'high',
+        title: 'Middleware missing auth checks',
+        description: 'middleware.ts exists but does not appear to include authentication or session verification logic.',
+        file_path: 'middleware.ts',
+        fix_suggestion: 'Add auth/session checking to middleware.ts to protect routes (e.g., getSession, getToken, auth()).',
+      });
+      score -= 10;
+    }
+  }
+
+  // Deep check: Error exposure in API routes
+  for (const [path, content] of Object.entries(ctx.fileContents)) {
+    if (!path.includes('app/api/') || !/route\.[jt]sx?$/.test(path)) continue;
+    const exposesErrorStack = /error\.stack/.test(content);
+    const exposesErrorMessage = /(?:json|Response)\s*\(.*error\.message/.test(content) ||
+      /message:\s*(?:error|err|e)\.message/.test(content);
+    if (exposesErrorStack || exposesErrorMessage) {
+      findings.push({
+        category: 'security',
+        severity: 'medium',
+        title: 'Error details exposed in API response',
+        description: `${path} may expose raw error details (${exposesErrorStack ? 'error.stack' : 'error.message'}) in responses, leaking internal information.`,
+        file_path: path,
+        fix_suggestion: 'Sanitize error responses. Return generic error messages to clients and log detailed errors server-side.',
+      });
+      score -= 5;
+    }
+  }
+
   return {
     category: 'security',
     score: Math.max(0, score),

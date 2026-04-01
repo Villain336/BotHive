@@ -92,3 +92,106 @@ export async function getMultipleFiles(
 
   return results;
 }
+
+// --- Write operations ---
+
+export async function createBranch(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  branchName: string,
+  baseBranch: string
+): Promise<void> {
+  // Get the SHA of the base branch
+  const { data: ref } = await octokit.git.getRef({
+    owner,
+    repo,
+    ref: `heads/${baseBranch}`,
+  });
+
+  await octokit.git.createRef({
+    owner,
+    repo,
+    ref: `refs/heads/${branchName}`,
+    sha: ref.object.sha,
+  });
+}
+
+export async function createOrUpdateFile(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  message: string,
+  branch: string
+): Promise<{ sha: string }> {
+  // Check if file already exists to get its SHA
+  let existingSha: string | undefined;
+  try {
+    const { data } = await octokit.repos.getContent({
+      owner,
+      repo,
+      path,
+      ref: branch,
+    });
+    if ('sha' in data) {
+      existingSha = data.sha;
+    }
+  } catch {
+    // File doesn't exist yet — that's fine for creation
+  }
+
+  const { data } = await octokit.repos.createOrUpdateFileContents({
+    owner,
+    repo,
+    path,
+    message,
+    content: Buffer.from(content).toString('base64'),
+    branch,
+    sha: existingSha,
+  });
+
+  return { sha: data.commit.sha || '' };
+}
+
+export async function createPullRequest(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  title: string,
+  body: string,
+  head: string,
+  base: string
+): Promise<{ html_url: string; number: number }> {
+  const { data } = await octokit.pulls.create({
+    owner,
+    repo,
+    title,
+    body,
+    head,
+    base,
+  });
+
+  return { html_url: data.html_url, number: data.number };
+}
+
+export async function searchCode(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  query: string
+): Promise<{ path: string; url: string }[]> {
+  try {
+    const { data } = await octokit.search.code({
+      q: `${query} repo:${owner}/${repo}`,
+      per_page: 15,
+    });
+    return data.items.map((item) => ({
+      path: item.path,
+      url: item.html_url,
+    }));
+  } catch {
+    return [];
+  }
+}

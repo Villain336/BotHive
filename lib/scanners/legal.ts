@@ -115,6 +115,47 @@ export function analyzeLegal(ctx: RepoContext): ScanResult {
     score -= 5;
   }
 
+  // Deep check: Privacy policy completeness (GDPR)
+  const gdprKeywords = ['data controller', 'personal data', 'legal basis', 'retention', 'rights', 'contact'];
+  for (const [path, content] of Object.entries(ctx.fileContents)) {
+    if (!path.toLowerCase().includes('privacy')) continue;
+    const lowerContent = content.toLowerCase();
+    const foundSections = gdprKeywords.filter((kw) => lowerContent.includes(kw));
+    if (foundSections.length < 4) {
+      findings.push({
+        category: 'legal',
+        severity: 'medium',
+        title: 'Incomplete privacy policy',
+        description: `Privacy policy at ${path} only covers ${foundSections.length}/6 required GDPR sections. Missing: ${gdprKeywords.filter((kw) => !lowerContent.includes(kw)).join(', ')}.`,
+        file_path: path,
+        fix_suggestion: 'Update your privacy policy to include all GDPR-required sections: data controller, personal data, legal basis, retention, rights, and contact information.',
+      });
+      score -= 10;
+    }
+    break; // Only check the first privacy policy file found
+  }
+
+  // Deep check: Terms of Service completeness
+  const tosKeywords = ['liability', 'termination', 'governing law', 'intellectual property', 'warranty'];
+  for (const [path, content] of Object.entries(ctx.fileContents)) {
+    const lowerPath = path.toLowerCase();
+    if (!TOS_PATTERNS.some((tp) => lowerPath.includes(tp))) continue;
+    const lowerContent = content.toLowerCase();
+    const foundSections = tosKeywords.filter((kw) => lowerContent.includes(kw));
+    if (foundSections.length < 3) {
+      findings.push({
+        category: 'legal',
+        severity: 'medium',
+        title: 'Incomplete terms of service',
+        description: `Terms of service at ${path} only covers ${foundSections.length}/5 recommended sections. Missing: ${tosKeywords.filter((kw) => !lowerContent.includes(kw)).join(', ')}.`,
+        file_path: path,
+        fix_suggestion: 'Update your terms of service to cover: liability, termination, governing law, intellectual property, and warranty.',
+      });
+      score -= 10;
+    }
+    break; // Only check the first ToS file found
+  }
+
   return {
     category: 'legal',
     score: Math.max(0, score),
