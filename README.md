@@ -1,226 +1,170 @@
-# 🧠 BotHive: AI Agent & Automation Marketplace
+# ShipReady
 
-[![License](https://img.shields.io/badge/license-Proprietary-red.svg)](LICENSE)
-[![CI](https://github.com/georgioupanayiotis/BotHive/actions/workflows/test.yml/badge.svg)](https://github.com/georgioupanayiotis/BotHive/actions/workflows/test.yml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+Make your app production-ready. AI-powered compliance scanning and agentic code fixes for vibe coders.
 
-## 🎯 Vision
+## What it does
 
-BotHive is an open-source marketplace platform where automation builders can showcase and list their AI agents, workflows, and automation tools. Whether you're a builder creating agents for Make, Zapier, n8n, or custom platforms, or a business looking to discover and connect with automation experts—BotHive brings you together.
+ShipReady scans your GitHub repository and identifies compliance gaps across 4 categories, then helps you fix them through an agentic AI chat that can read your code, suggest fixes, and apply them via PR.
 
-## 🌟 What Makes BotHive Different
+### Compliance Categories
 
-- **Multi-Platform Support**: List agents from Make, Zapier, n8n, Voiceflow, and more
-- **Builder-Focused**: Portfolio showcase, analytics, and monetization tools for creators
-- **Open Source**: Community-driven development, transparent, and self-hostable
-- **Flexible Listing**: Free tier for newcomers, premium features for power users
+| Category | What it checks |
+|----------|---------------|
+| **Testing** (primary focus) | Test coverage ratio, assertion density, framework config, E2E presence, API route test coverage |
+| **Security** | Secrets in code, .gitignore coverage, auth middleware, input validation, CSP headers, rate limiting |
+| **Legal & Privacy** | LICENSE, privacy policy (GDPR completeness), terms of service, cookie consent, data deletion |
+| **Ops & Infrastructure** | CI/CD pipeline steps, Docker best practices, error monitoring, health checks, env validation |
 
----
+### How it works
 
-## 🛠️ Tech Stack
+1. **Connect** your GitHub repo (via GitHub OAuth)
+2. **Scan** to get a compliance scorecard (0-100 per category)
+3. **Chat** with specialized AI experts to fix each gap
+4. **Apply** fixes directly via branch + PR creation
 
-- **Framework**: Next.js 14 (App Router)
-- **Language**: TypeScript
-- **Database**: Supabase (PostgreSQL) / MongoDB (flexible provider system)
-- **Authentication**: JWT + Supabase Auth
-- **Payments**: Stripe
-- **UI**: Radix UI + Tailwind CSS
+### Pricing
+
+| Plan | Price | Limits |
+|------|-------|--------|
+| Trial | Free (14 days) | 1 project, 3 scans/mo, 10 messages/day |
+| Starter | $29/mo | 3 projects, unlimited scans, 50 messages/day |
+| Pro | $79/mo | 10 projects, unlimited everything, PR creation |
+| Team | $199/mo | Unlimited projects, team management, priority support |
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router), TypeScript
+- **Database**: Supabase (PostgreSQL + Auth + RLS)
+- **Payments**: Stripe (subscriptions, webhooks, customer portal)
+- **AI**: Anthropic Claude API (agentic chat with multi-turn tool use)
+- **GitHub**: Octokit (repo scanning, file reading, branch/commit/PR creation)
+- **UI**: Tailwind CSS + Radix UI (shadcn/ui components)
 - **State**: Zustand
-- **Validation**: Zod
+- **Monitoring**: Sentry
+- **Testing**: Jest + React Testing Library + Playwright
 
-## 🚀 Quick Start
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 18.x or 20.x
-- npm or yarn
-- Supabase account OR MongoDB instance
-- Stripe account (for payment features)
+- Node.js 18+ 
+- Supabase project
+- Stripe account
+- GitHub OAuth app
+- Anthropic API key
 
-### Installation
+### Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/rishabh3562/BotHive.git
-   cd BotHive
-   ```
+```bash
+git clone https://github.com/Villain336/BotHive.git
+cd BotHive
+npm install
+cp .env.example .env.local
+```
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+Edit `.env.local` with your credentials (see `.env.example` for all required variables).
 
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
+### Database
 
-   Edit `.env.local` with your credentials:
-   - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anon key
-   - `JWT_SECRET` - Generate with `openssl rand -base64 32`
-   - `JWT_REFRESH_SECRET` - Generate with `openssl rand -base64 32`
-   - `STRIPE_SECRET_KEY` - Your Stripe secret key
-   - See `.env.example` for all variables
+Apply the ShipReady schema to your Supabase project:
 
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
+```bash
+# Via Supabase CLI
+supabase db push
 
-5. **Open [http://localhost:3000](http://localhost:3000)**
+# Or manually run the migration SQL:
+# supabase/migrations/20260401000000_shipready_schema.sql
+```
 
-### Contributing
+### Stripe Products
 
-We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
+Create 3 subscription products in your Stripe dashboard:
+- **Starter**: $29/mo recurring
+- **Pro**: $79/mo recurring  
+- **Team**: $199/mo recurring
 
-Significant changes to the database layer require following the Database Adapter Migration Guide.
+Add the price IDs to your `.env.local`.
 
-**Important Notes**:
-- Read [SAFETY.md](SAFETY.md) for information about AI-generated content in this repository
-- By contributing, you agree to our [Contributor License Agreement (CLA)](CLA.md)
+### GitHub OAuth
 
----
+1. Go to Supabase Dashboard > Auth > Providers > GitHub
+2. Create a GitHub OAuth App at github.com/settings/developers
+3. Set callback URL to `https://your-domain.com/api/auth/callback`
+4. Add client ID and secret to Supabase
 
-## 👥 User Roles & Features
+### Run
 
-### **1. Builders**
+```bash
+npm run dev
+```
 
-**Creators and sellers of AI agents.**
+Open [http://localhost:3000](http://localhost:3000).
 
-#### **Key Features:**
+## Testing
 
-- **Profile Management:** Bio, profile picture, social links (LinkedIn, GitHub, etc.), portfolio links.
-- **Multi-Platform Agent Listing:**
-  - Support for Make, Zapier, n8n, Voiceflow, Dialogflow, and custom platforms.
-  - Upload agent files, templates, or workflow exports (`.json`, `.yaml`, `.zip`, etc.).
-  - Add demonstration video explaining functionality and use cases.
-  - Provide structured description, setup guide, and usage instructions.
-  - Tag agents by platform, category, and use case for better discovery.
-  - Set pricing options (free, one-time, or subscription-based).
-- **Subscription Model:**
-  - Free 7-day trial (list up to 2 agents).
-  - Tiered monthly plans for extended listings and premium features.
-- **Analytics Dashboard:** Insights on views, downloads, revenue, and conversion rates.
-- **Version Control:** Ability to update agent files with versioning support.
-- **Reviews & Engagement:** Receive and respond to recruiter feedback.
-- **Gamification & Recognition:**
-  - **Leaderboards** tracking top builders based on sales, revenue, and ratings.
-  - **Achievements & Badges** for milestones (e.g., "Top 10% Seller").
+```bash
+# Unit + Integration + Component tests (147 tests)
+npm test
 
----
+# With coverage
+npm run test:coverage
 
-### **2. Businesses & Recruiters**
+# Playwright E2E tests (8 spec files)
+npm run test:e2e
 
-**Companies and individuals seeking automation solutions or looking to hire builders for custom development.**
+# Type check
+npm run type-check
+```
 
-#### **Key Features:**
+## Project Structure
 
-- **Free Discovery:** Browse and search the marketplace without account required.
-- **Advanced Search & Filtering:**
-  - Filter by platform (Make, Zapier, n8n, etc.), category, use case, rating, and pricing.
-- **Detailed Agent Profiles:**
-  - Overview, demo video, technical specifications, and setup guides.
-  - User reviews, version history, and builder contact details.
-- **Direct Builder Connection:**
-  - Contact builders for custom projects.
-  - View builder portfolios and past work.
-- **Premium Features (Optional):**
-  - Early access to new listings.
-  - Priority support.
-  - Saved searches and watchlists.
+```
+app/
+  api/
+    auth/callback/     # GitHub OAuth callback
+    billing/           # Stripe checkout + portal
+    chat/              # Agentic AI chat (streaming SSE)
+    conversations/     # Chat history
+    projects/          # CRUD + scan + findings + apply
+    webhooks/stripe/   # Subscription webhook handler
+  dashboard/
+    chat/              # Conversation history
+    projects/          # Project list, detail, scan results
+    settings/          # Account + billing settings
+  page.tsx             # Landing page
+  pricing/             # Pricing page
 
----
+components/
+  chat/                # Chat interface, messages, tool status, code suggestions
+  ui/                  # shadcn/ui components (button, card, dialog, etc.)
 
-## 🔐 Trust, Safety & Compliance
+lib/
+  ai/                  # Claude client, system prompts, tool definitions
+  scanners/            # 4 compliance analyzers (testing, security, legal, ops)
+  auth.ts              # Zustand auth store with GitHub OAuth
+  github.ts            # GitHub API (read + write operations)
+  stripe.ts            # Subscription plans and pricing
+  usage.ts             # Plan limit enforcement
 
-- **Builder Verification:** Optional or required identity verification.
-- **File Security:** Automated scanning for malware and security threats.
-- **Dispute Resolution:** Mediation support for hiring-related disputes.
-- **Legal Compliance:** Clear Terms of Service and licensing guidelines for agent usage rights.
+e2e/                   # Playwright E2E tests
+__tests__/             # Jest unit + integration + component tests
+```
 
----
+## Architecture Decisions
 
-## 🌐 Community & Engagement
+- **Agentic loop**: Chat API uses a `while` loop (max 10 iterations) where Claude calls tools, results are fed back, and Claude reasons further until it reaches a final answer
+- **Tiered scanning**: Trial/Starter scans ~5 key files, Pro/Team scans up to 50 source files for deeper analysis
+- **Server-side auth**: Middleware protects dashboard routes, auth callback stores GitHub token for repo access
+- **Usage enforcement**: Every API route checks plan limits before execution (429 on limit hit)
 
-- **Discussion Forum:** Builders and recruiters can exchange feedback, collaborate, and suggest features.
-- **Educational Resources:** Tutorials for builders on agent creation and best practices.
-- **Monthly Spotlights:** Featuring top-performing builders and high-quality AI agents.
+## Stripe Products (Live)
 
----
+| Plan | Product ID | Price ID |
+|------|-----------|----------|
+| Starter ($29/mo) | `prod_UFqX3ywQU1VdkL` | `price_1THKqnR69hwQuKhCz8CsaR8k` |
+| Pro ($79/mo) | `prod_UFqX5JA4fCVJPO` | `price_1THKqnR69hwQuKhC8z4rWrlm` |
+| Team ($199/mo) | `prod_UFqXs1bO0cATyv` | `price_1THKqoR69hwQuKhCRZGQLPwb` |
 
-## 🚀 MVP Priorities
+## License
 
-### **Core Platform Features:**
-
-✅ User authentication (Builders & Recruiters).\
-✅ AI Agent listing system (file upload, video, descriptions, pricing).\
-✅ Marketplace browsing with search and filters.\
-✅ Secure purchase and file download system.\
-✅ Subscription-based payments for builders.\
-✅ Leaderboard and review system.\
-✅ Admin dashboard for content moderation and verification.
-
----
-
-## 📌 Future Roadmap
-
-### **Short-Term Enhancements:**
-
-- **AI Agent Hosting & Deployment:** Enable one-click cloud deployment instead of manual downloads.
-- **Advanced Security Measures:** Enhanced verification, malware detection, and fraud prevention.
-- **Competitive Differentiation:** Focus on plug-and-play AI solutions and exclusive premium listings.
-
-### **Long-Term Vision:**
-
-✅ Expand AI automation capabilities.\
-✅ Introduce API integrations for businesses.\
-✅ Foster an AI innovation hub through community-driven development.
-
----
-
-## 📢 Project Status
-
-BotHive is an open-source project under active development. We're building this in public and welcome contributions from the community!
-
-### Important Notes
-
-- **AI-Generated Content**: Many issues and some documentation were AI-assisted. Please read [SAFETY.md](SAFETY.md) for details.
-- **Active Development**: Features may change as we iterate based on community feedback.
-- **Community-Driven**: Your input shapes the project direction.
-
-### Get Involved
-
-- Star the repository to show support
-- Fork and contribute features
-- Report bugs and suggest improvements
-- Join discussions and help other contributors
-- Spread the word about BotHive
-
----
-
-## 📄 License
-
-**IMPORTANT**: This project is **NO LONGER** under the MIT License as of October 2025.
-
-This project is now licensed under a **Proprietary License** - see the [LICENSE](LICENSE) file for full details.
-
-### What This Means:
-
-- ✅ You **CAN**: View code, fork for contributions, learn from the code
-- ❌ You **CANNOT**: Use commercially, redistribute, create competing products
-- 📝 **To Contribute**: You must agree to our [Contributor License Agreement (CLA)](CLA.md)
-- 💼 **Commercial Use**: Contact [@rishabh3562](https://github.com/rishabh3562) for licensing
-
-This ensures the project can be sustainably developed while protecting the owner's ability to commercialize the platform.
-
-## 🙏 Acknowledgments
-
-- Built with Next.js, Supabase, and other amazing open-source tools
-- Thanks to all contributors who help make BotHive better
-- Special thanks to the automation and AI community
-
----
-
-**BotHive**: Empowering automation builders and connecting them with businesses worldwide. 🚀
-
+Proprietary - see [LICENSE](LICENSE) for details.
