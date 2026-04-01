@@ -1,17 +1,14 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import { Navbar } from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { SentryUserProvider } from '@/components/sentry-user-provider';
 
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'BotHive - The AI Agent Marketplace',
-  description: 'Connect with top AI builders and agents. Find the perfect AI solution for your needs or showcase your AI creations.',
+  title: 'ShipReady - Make Your App Production-Ready',
+  description: 'AI-powered compliance platform for vibe coders. Get tests, security, legal docs, and ops setup through expert AI chat.',
 };
 
 export default function RootLayout({
@@ -21,7 +18,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className="font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

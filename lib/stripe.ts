@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
+import type { SubscriptionPlan } from './types';
 
-// Make Stripe initialization optional for build-time
 export const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, {
       apiVersion: '2023-10-16',
@@ -8,55 +8,81 @@ export const stripe = process.env.STRIPE_SECRET_KEY
     })
   : null;
 
-export const subscriptionPlans = {
-  basic: {
-    id: 'basic-monthly',
-    name: 'Basic Plan',
-    description: 'Perfect for getting started',
+export const subscriptionPlans: Record<string, SubscriptionPlan> = {
+  starter: {
+    id: 'starter-monthly',
+    name: 'Starter',
+    description: 'For individual developers getting started',
     price: 29,
     interval: 'month',
     features: [
-      'List & buy AI agents',
-      'Basic analytics',
-      'Email support',
-      '2 active projects',
-      'Standard API access'
+      'Up to 3 projects',
+      'Unlimited repo scans',
+      '50 AI chat messages/day',
+      'All 4 compliance categories',
+      'Export compliance reports',
     ],
-    stripePriceId: process.env.STRIPE_BASIC_PRICE_ID || '',
-    tier: 'basic'
+    limits: {
+      projects: 3,
+      scans_per_month: -1,
+      messages_per_day: 50,
+      pr_creation: false,
+    },
+    stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || '',
+    tier: 'starter',
   },
   pro: {
     id: 'pro-monthly',
-    name: 'Pro Plan',
-    description: 'For growing businesses',
-    price: 99,
+    name: 'Pro',
+    description: 'For serious builders shipping to production',
+    price: 79,
     interval: 'month',
     features: [
-      'Everything in Basic',
-      'Advanced analytics',
-      'Priority support',
-      'Unlimited projects',
-      'Advanced API access',
-      'Custom integrations'
+      'Up to 10 projects',
+      'Unlimited scans & messages',
+      'Auto-fix with PR creation',
+      'Priority AI responses',
+      'Advanced security scanning',
+      'Custom compliance rules',
     ],
+    limits: {
+      projects: 10,
+      scans_per_month: -1,
+      messages_per_day: -1,
+      pr_creation: true,
+    },
     stripePriceId: process.env.STRIPE_PRO_PRICE_ID || '',
-    tier: 'pro'
+    tier: 'pro',
   },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise Plan',
-    description: 'For large organizations',
-    price: 499,
+  team: {
+    id: 'team-monthly',
+    name: 'Team',
+    description: 'For teams and organizations',
+    price: 199,
     interval: 'month',
     features: [
+      'Unlimited projects',
       'Everything in Pro',
-      'Dedicated support',
-      'Custom AI solutions',
-      'SLA guarantees',
-      'Advanced security',
-      'Team management'
+      'Team member management',
+      'Shared compliance dashboard',
+      'Priority support',
+      'Custom integrations',
     ],
-    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || '',
-    tier: 'enterprise'
-  }
-} as const;
+    limits: {
+      projects: -1,
+      scans_per_month: -1,
+      messages_per_day: -1,
+      pr_creation: true,
+    },
+    stripePriceId: process.env.STRIPE_TEAM_PRICE_ID || '',
+    tier: 'team',
+  },
+};
+
+export const trialLimits = {
+  projects: 1,
+  scans_per_month: 3,
+  messages_per_day: 10,
+  pr_creation: false,
+  duration_days: 14,
+};

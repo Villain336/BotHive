@@ -1,5 +1,8 @@
-import { create } from "zustand";
-import { User } from "./types";
+'use client';
+
+import { create } from 'zustand';
+import { User } from './types';
+import { supabase } from './database/client';
 
 interface AuthState {
   user: User | null;
@@ -8,6 +11,7 @@ interface AuthState {
   setUser: (user: User | null) => void;
   initialize: () => Promise<void>;
   signOut: () => Promise<void>;
+  signInWithGitHub: () => Promise<void>;
 }
 
 export const useAuth = create<AuthState>((set) => ({
@@ -15,70 +19,70 @@ export const useAuth = create<AuthState>((set) => ({
   isLoading: true,
   error: null,
   setUser: (user) => set({ user }),
+
   initialize: async () => {
     try {
       set({ isLoading: true, error: null });
 
-      // Call session API endpoint (server-side checks cookies)
-      const response = await fetch("/api/auth/session", {
-        credentials: "include", // Important: send cookies
-      });
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!response.ok) {
-        set({ user: null, isLoading: false, error: null });
-        return;
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          set({
+            user: {
+              id: profile.id,
+              email: session.user.email || '',
+              full_name: profile.full_name || '',
+              avatar_url: profile.avatar_url || session.user.user_metadata?.avatar_url || '',
+              github_username: profile.github_username || '',
+              subscription_tier: profile.subscription_tier || 'trial',
+              trial_ends_at: profile.trial_ends_at || undefined,
+              scans_used_this_month: profile.scans_used_this_month || 0,
+            },
+            isLoading: false,
+          });
+          return;
+        }
       }
 
-      const data = await response.json();
-
-      if (data.user) {
-        set({
-          user: {
-            id: data.user.id,
-            name: data.user.full_name,
-            email: data.user.email,
-            role: data.user.role,
-            avatar:
-              data.user.avatar_url ||
-              `https://api.dicebear.com/7.x/avatars/svg?seed=${data.user.email}`,
-          },
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        set({ user: null, isLoading: false, error: null });
-      }
+      set({ user: null, isLoading: false });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error("Error initializing auth:", message);
-      set({
-        user: null,
-        isLoading: false,
-        error: message || "Failed to initialize authentication",
-      });
+      console.error('Error initializing auth:', message);
+      set({ user: null, isLoading: false, error: message });
     }
   },
+
+  signInWithGitHub: async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: 'repo read:user',
+        },
+      });
+      if (error) throw error;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      set({ error: message });
+    }
+  },
+
   signOut: async () => {
     try {
-      // Call signout API endpoint
-      const response = await fetch("/api/auth/signout", {
-        method: "POST",
-        credentials: "include", // Important: send cookies
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to sign out");
-      }
-
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
       set({ user: null, isLoading: false, error: null });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error("Error signing out:", message);
-      set({
-        user: null,
-        isLoading: false,
-        error: message || "Failed to sign out",
-      });
+      set({ user: null, isLoading: false, error: message });
     }
   },
 }));

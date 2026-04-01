@@ -1,7 +1,5 @@
 'use client';
 
-import { useSubscription } from '@/lib/hooks/use-subscription';
-import { ManageSubscriptionButton } from '@/components/manage-subscription-button';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,101 +9,98 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { CreditCard, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
+import { subscriptionPlans } from '@/lib/stripe';
+import { CreditCard } from 'lucide-react';
 
 export default function BillingPage() {
-  const { subscription, loading, error } = useSubscription();
+  const { user } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const handleUpgrade = async (plan: string) => {
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch (e) {
+      console.error('Checkout error', e);
+    }
+  };
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <p className="text-muted-foreground">Failed to load subscription details.</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          Try again
-        </Button>
-      </div>
-    );
-  }
+  const handleManage = async () => {
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch (e) {
+      console.error('Portal error', e);
+    }
+  };
+
+  const currentTier = user?.subscription_tier || 'trial';
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Billing & Subscription</h1>
+    <div className="max-w-4xl">
+      <h1 className="text-3xl font-bold mb-2">Billing</h1>
+      <p className="text-muted-foreground mb-8">Manage your subscription and billing</p>
 
-      <div className="space-y-8">
-        {/* Current Plan */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Current Plan</CardTitle>
-            <CardDescription>
-              Manage your subscription and billing details
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {subscription ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium capitalize">{subscription.tier} Plan</p>
-                    <p className="text-sm text-muted-foreground">
-                      {subscription.status === 'active' ? (
-                        <>
-                          Renews on{' '}
-                          {format(new Date(subscription.currentPeriodEnd), 'MMMM do, yyyy')}
-                        </>
-                      ) : (
-                        'Subscription inactive'
-                      )}
-                    </p>
-                  </div>
-                  <Badge variant={subscription.status === 'active' ? 'default' : 'secondary'}>
-                    {subscription.status}
-                  </Badge>
-                </div>
+      <Card className="mb-8">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" />
+                Current Plan
+              </CardTitle>
+              <CardDescription>Your active subscription</CardDescription>
+            </div>
+            <Badge className="capitalize text-lg px-3 py-1">{currentTier}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {currentTier === 'trial' ? (
+            <p className="text-sm text-muted-foreground">
+              You are on the 14-day free trial.
+              {user?.trial_ends_at && ` Trial ends ${new Date(user.trial_ends_at).toLocaleDateString()}.`}
+            </p>
+          ) : (
+            <Button onClick={handleManage} variant="outline">
+              Manage Subscription
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-                <div className="flex items-center space-x-4">
-                  <ManageSubscriptionButton />
-                  <Button variant="ghost">View Invoice History</Button>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {Object.entries(subscriptionPlans).map(([key, plan]) => (
+          <Card key={key} className={currentTier === plan.tier ? 'border-primary' : ''}>
+            <CardHeader>
+              <CardTitle>{plan.name}</CardTitle>
+              <CardDescription>{plan.description}</CardDescription>
+              <div className="mt-2">
+                <span className="text-3xl font-bold">${plan.price}</span>
+                <span className="text-muted-foreground">/mo</span>
               </div>
-            ) : (
-              <div className="text-center space-y-4">
-                <CreditCard className="h-12 w-12 mx-auto text-muted-foreground" />
-                <div>
-                  <p className="font-medium">No active subscription</p>
-                  <p className="text-sm text-muted-foreground">
-                    Choose a plan to get started with our premium features
-                  </p>
-                </div>
-                <Link href="/pricing">
-                  <Button>View Plans</Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Payment Method */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Method</CardTitle>
-            <CardDescription>
-              Manage your payment methods and billing information
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ManageSubscriptionButton />
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2 text-sm mb-4">
+                {plan.features.map((f) => (
+                  <li key={f}>- {f}</li>
+                ))}
+              </ul>
+              {currentTier === plan.tier ? (
+                <Button disabled className="w-full">Current Plan</Button>
+              ) : (
+                <Button onClick={() => handleUpgrade(key)} className="w-full">
+                  Upgrade to {plan.name}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

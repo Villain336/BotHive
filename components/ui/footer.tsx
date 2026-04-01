@@ -1,4 +1,4 @@
-import { Bot, Github, Linkedin, Twitter } from 'lucide-react';
+import { Shield, Github, Twitter } from 'lucide-react';
 import Link from 'next/link';
 
 export function Footer() {
@@ -8,11 +8,11 @@ export function Footer() {
         <div className="py-16 grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center gap-2 font-bold text-xl">
-              <Bot className="h-6 w-6" />
-              BotHive
+              <Shield className="h-6 w-6 text-primary" />
+              ShipReady
             </div>
             <p className="text-sm text-muted-foreground">
-              The premier marketplace for AI agents and builders. Connect, create, and innovate with AI.
+              Make your app production-ready. AI-powered compliance, testing, security, and ops for vibe coders.
             </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
@@ -21,20 +21,12 @@ export function Footer() {
               <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
                 <Github className="h-5 w-5" />
               </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Linkedin className="h-5 w-5" />
-              </Link>
             </div>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4">Platform</h3>
+            <h3 className="font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/agents" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Browse AI Agents
-                </Link>
-              </li>
               <li>
                 <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
                   Pricing
@@ -42,40 +34,19 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-foreground transition-colors">
-                  About Us
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Blog
+                  About
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-4">Resources</h3>
+            <h3 className="font-semibold mb-4">Compliance Areas</h3>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="/help" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/status" className="text-muted-foreground hover:text-foreground transition-colors">
-                  System Status
-                </Link>
-              </li>
-              <li>
-                <Link href="/changelog" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Changelog
-                </Link>
-              </li>
+              <li className="text-muted-foreground">Testing & Coverage</li>
+              <li className="text-muted-foreground">Security & Auth</li>
+              <li className="text-muted-foreground">Legal & Privacy</li>
+              <li className="text-muted-foreground">Ops & Infrastructure</li>
             </ul>
           </div>
 
@@ -92,17 +63,12 @@ export function Footer() {
                   Terms of Service
                 </Link>
               </li>
-              <li>
-                <Link href="/security" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Security
-                </Link>
-              </li>
             </ul>
           </div>
         </div>
 
         <div className="border-t py-8 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} BotHive. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ShipReady. All rights reserved.</p>
         </div>
       </div>
     </footer>

@@ -1,193 +1,70 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/lib/auth';
+import { Github, Shield, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
-import { Bot, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
 
 export default function SignUpPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { initialize } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'recruiter',
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      // Call sign-up API route (uses secure httpOnly cookies)
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // Important: allows cookies to be set
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          full_name: formData.name,
-          role: formData.role,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create account');
-      }
-
-      if (!data.user) {
-        throw new Error('No user data returned after sign up');
-      }
-
-      // Initialize auth context with new user
-      await initialize();
-
-      toast({
-        title: "Account created!",
-        description: "You have successfully created your account.",
-      });
-
-      router.push(`/dashboard/${formData.role}`);
-
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create account. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: string } }
-  ) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const { signInWithGitHub } = useAuth();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-6">
-            <Bot className="h-8 w-8 text-primary mr-2" />
-            <span className="text-2xl font-bold">BotHive</span>
+        <CardHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <Shield className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-2xl text-center">Create an account</CardTitle>
-          <CardDescription className="text-center">
-            Enter your information to create your account
+          <CardTitle className="text-2xl">Start your free trial</CardTitle>
+          <CardDescription>
+            14 days free. No credit card required.
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="m@example.com"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">I want to...</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) =>
-                  handleInputChange({ target: { name: 'role', value } })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recruiter">Hire AI Agents</SelectItem>
-                  <SelectItem value="builder">Build & Sell AI Agents</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                "Create account"
-              )}
-            </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link
-                href="/sign-in"
-                className="text-primary hover:underline"
-              >
-                Sign in
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
+        <CardContent className="space-y-6">
+          <ul className="space-y-2 text-sm">
+            <li className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              Connect 1 GitHub repository
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              3 compliance scans per month
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              AI expert chat (10 messages/day)
+            </li>
+            <li className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              All 4 compliance categories
+            </li>
+          </ul>
+
+          <Button
+            onClick={signInWithGitHub}
+            className="w-full gap-2"
+            size="lg"
+          >
+            <Github className="h-5 w-5" />
+            Sign up with GitHub
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            By signing up, you agree to our Terms of Service and Privacy Policy.
+          </p>
+        </CardContent>
+        <div className="px-6 pb-6 text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link href="/sign-in" className="text-primary hover:underline">
+            Sign in
+          </Link>
+        </div>
       </Card>
     </div>
   );

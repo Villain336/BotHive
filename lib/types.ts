@@ -1,156 +1,91 @@
-export type Role = 'builder' | 'recruiter' | 'admin';
+export type SubscriptionTier = 'trial' | 'starter' | 'pro' | 'team';
 
-export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise';
+export type ScanCategory = 'testing' | 'security' | 'legal' | 'ops';
+
+export type FindingSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+
+export type FindingStatus = 'open' | 'in_progress' | 'fixed' | 'dismissed';
+
+export type ProjectStatus = 'pending' | 'scanning' | 'ready' | 'error';
+
+export type ConversationCategory = ScanCategory | 'general';
 
 export interface User {
   id: string;
-  name: string;
-  role: Role;
   email: string;
-  avatar: string;
-  subscription?: Subscription;
-}
-
-export interface Subscription {
-  id: string;
-  userId: string;
-  tier: SubscriptionTier;
-  status: 'active' | 'canceled' | 'past_due' | 'trialing';
-  currentPeriodEnd: string;
-  cancelAtPeriodEnd: boolean;
-  trialEnd?: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
-}
-
-export interface AIAgent {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  builder: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  category: string;
-  tags: string[];
-  rating: number;
-  reviews: number;
-  imageUrl: string;
-  features: string[];
-  created: string;
-  status: 'pending' | 'approved' | 'rejected';
-  moderationNotes?: string;
-  performance: {
-    revenueGrowth: number;
-    userSatisfaction: number;
-    responseTime: number;
-    uptime: number;
-  };
-  metrics: {
-    dailyUsers: number[];
-    monthlyRevenue: number[];
-    taskCompletion: number;
-  };
-  techStack: string[];
-  requirements: {
-    cpu: string;
-    memory: string;
-    storage: string;
-  };
-  updates: {
-    date: string;
-    version: string;
-    changes: string[];
-  }[];
-  videoUrl?: string;
-  files?: {
-    name: string;
-    url: string;
-    size: number;
-    type: string;
-  }[];
-}
-
-export interface Review {
-  id: string;
-  agentId: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  rating: number;
-  comment: string;
-  date: string;
-  helpful: number;
-  response?: {
-    from: string;
-    message: string;
-    date: string;
-  };
+  full_name: string;
+  avatar_url: string;
+  github_username?: string;
+  subscription_tier: SubscriptionTier;
+  trial_ends_at?: string;
+  scans_used_this_month: number;
 }
 
 export interface Project {
   id: string;
+  user_id: string;
+  github_repo_url: string;
+  github_repo_name: string;
+  github_default_branch: string;
+  last_scan_at?: string;
+  overall_score?: number;
+  test_score?: number;
+  security_score?: number;
+  legal_score?: number;
+  ops_score?: number;
+  status: ProjectStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScanFinding {
+  id: string;
+  project_id: string;
+  scan_id: string;
+  category: ScanCategory;
+  severity: FindingSeverity;
   title: string;
   description: string;
-  budget: number;
-  duration: string;
-  status: 'open' | 'in_progress' | 'completed';
-  recruiter: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  requirements: string[];
-  proposals: Proposal[];
-  created: string;
-  deadline: string;
-  category: string;
-  skills: string[];
+  file_path?: string;
+  line_number?: number;
+  fix_suggestion?: string;
+  status: FindingStatus;
+  fixed_at?: string;
+  created_at: string;
 }
 
-export interface Proposal {
+export interface Conversation {
   id: string;
-  projectId: string;
-  builder: {
-    id: string;
-    name: string;
-    avatar: string;
-    rating: number;
-    completedProjects: number;
-  };
-  amount: number;
-  duration: string;
-  coverLetter: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  created: string;
+  project_id: string;
+  user_id: string;
+  category: ConversationCategory;
+  finding_id?: string;
+  title: string;
+  status: 'active' | 'resolved';
+  created_at: string;
+  updated_at: string;
 }
 
-export interface Message {
+export interface ChatMessage {
   id: string;
-  senderId: string;
-  receiverId: string;
+  conversation_id: string;
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: string;
-  read: boolean;
-  projectId?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
 }
 
-export interface ChatThread {
+export interface Subscription {
   id: string;
-  participants: {
-    id: string;
-    name: string;
-    avatar: string;
-  }[];
-  lastMessage: {
-    content: string;
-    timestamp: string;
-    senderId: string;
-  };
-  unreadCount: number;
-  projectId?: string;
+  user_id: string;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  plan: SubscriptionTier;
+  status: 'active' | 'canceled' | 'past_due' | 'trialing';
+  current_period_start?: string;
+  current_period_end?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SubscriptionPlan {
@@ -160,12 +95,12 @@ export interface SubscriptionPlan {
   price: number;
   interval: 'month' | 'year';
   features: string[];
+  limits: {
+    projects: number;
+    scans_per_month: number;
+    messages_per_day: number;
+    pr_creation: boolean;
+  };
   stripePriceId: string;
   tier: SubscriptionTier;
-}
-
-export interface cookieMethod{
-  get(name: string): string | undefined;
-  set(name: string, value: string, options?: Record<string, unknown>): void;
-  remove(name: string, options?: Record<string, unknown>): void;
 }

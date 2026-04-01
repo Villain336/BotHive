@@ -1,8 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import type { NextRequest } from 'next/server';
-import type { AuthenticatedRequest } from '@/lib/middleware/auth';
 
-type RequestLike = (NextRequest | Request) & Partial<AuthenticatedRequest>;
+type RequestLike = NextRequest | Request;
 
 function getPathname(request: RequestLike): string {
   if ('nextUrl' in request && request.nextUrl) {
@@ -22,17 +21,6 @@ export function captureApiException(
   context: Record<string, unknown> = {}
 ) {
   Sentry.withScope((scope) => {
-    const user = (request as AuthenticatedRequest).user;
-
-    if (user) {
-      scope.setUser({
-        id: user._id,
-        email: user.email,
-        username: user.full_name,
-        segment: user.role,
-      });
-    }
-
     scope.setTag('request.method', request.method);
     scope.setTag('request.pathname', getPathname(request));
 

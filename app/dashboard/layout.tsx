@@ -5,89 +5,26 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import {
   LayoutDashboard,
-  Bot,
-  Users,
-  Settings,
-  FileText,
+  FolderGit2,
   MessageSquare,
-  BarChart3,
-  Shield,
+  Settings,
+  CreditCard,
   LogOut,
   Menu,
   Loader2,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
-interface SidebarItem {
-  icon: any;
-  label: string;
-  href: string;
-  role: 'builder' | 'recruiter' | 'admin' | 'all';
-}
-
-const sidebarItems: SidebarItem[] = [
-  {
-    icon: LayoutDashboard,
-    label: 'Overview',
-    href: '/dashboard/builder',
-    role: 'builder',
-  },
-  {
-    icon: Bot,
-    label: 'My Agents',
-    href: '/dashboard/builder/agents',
-    role: 'builder',
-  },
-  {
-    icon: BarChart3,
-    label: 'Analytics',
-    href: '/dashboard/builder/analytics',
-    role: 'builder',
-  },
-  {
-    icon: FileText,
-    label: 'Contracts',
-    href: '/dashboard/builder/contracts',
-    role: 'builder',
-  },
-  {
-    icon: MessageSquare,
-    label: 'Messages',
-    href: '/dashboard/builder/messages',
-    role: 'builder',
-  },
-  {
-    icon: LayoutDashboard,
-    label: 'Browse Agents',
-    href: '/dashboard/recruiter',
-    role: 'recruiter',
-  },
-  {
-    icon: Users,
-    label: 'My Projects',
-    href: '/dashboard/recruiter/projects',
-    role: 'recruiter',
-  },
-  {
-    icon: MessageSquare,
-    label: 'Messages',
-    href: '/dashboard/recruiter/messages',
-    role: 'recruiter',
-  },
-  {
-    icon: Shield,
-    label: 'Moderation',
-    href: '/dashboard/admin',
-    role: 'admin',
-  },
-  {
-    icon: Settings,
-    label: 'Settings',
-    href: '/settings',
-    role: 'all',
-  },
+const sidebarItems = [
+  { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
+  { icon: FolderGit2, label: 'Projects', href: '/dashboard/projects' },
+  { icon: MessageSquare, label: 'Chat', href: '/dashboard/chat' },
+  { icon: Shield, label: 'Compliance', href: '/dashboard/compliance' },
+  { icon: CreditCard, label: 'Billing', href: '/dashboard/settings/billing' },
+  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
 ];
 
 export default function DashboardLayout({
@@ -118,13 +55,7 @@ export default function DashboardLayout({
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  const filteredItems = sidebarItems.filter(
-    (item) => item.role === user.role || item.role === 'all'
-  );
+  if (!user) return null;
 
   const handleLogout = async () => {
     await signOut();
@@ -133,7 +64,6 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Sidebar Toggle */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button
           variant="outline"
@@ -144,7 +74,6 @@ export default function DashboardLayout({
         </Button>
       </div>
 
-      {/* Sidebar */}
       <div
         className={cn(
           'fixed top-0 left-0 z-40 w-64 h-screen transition-transform bg-card border-r',
@@ -154,13 +83,18 @@ export default function DashboardLayout({
       >
         <div className="h-full px-3 py-4 flex flex-col">
           <div className="mb-8 px-4">
-            <h2 className="text-lg font-semibold">AI Marketplace</h2>
-            <p className="text-sm text-muted-foreground capitalize">{user.role}</p>
+            <Link href="/" className="flex items-center gap-2">
+              <Shield className="h-6 w-6 text-primary" />
+              <h2 className="text-lg font-semibold">ShipReady</h2>
+            </Link>
+            <p className="text-xs text-muted-foreground mt-1 capitalize">
+              {user.subscription_tier} plan
+            </p>
           </div>
 
           <nav className="space-y-1 flex-1">
-            {filteredItems.map((item) => {
-              const isActive = pathname === item.href;
+            {sidebarItems.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <Link
                   key={item.href}
@@ -181,14 +115,20 @@ export default function DashboardLayout({
 
           <div className="border-t pt-4 mt-4">
             <div className="px-4 mb-4 flex items-center gap-3">
-              <img
-                src={user.avatar}
-                alt={user.name}
-                className="h-8 w-8 rounded-full"
-              />
-              <div>
-                <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+              {user.avatar_url ? (
+                <img
+                  src={user.avatar_url}
+                  alt={user.full_name}
+                  className="h-8 w-8 rounded-full"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium">
+                  {user.full_name?.charAt(0) || user.email.charAt(0)}
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user.full_name || 'User'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             </div>
             <Button
@@ -203,14 +143,10 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      {/* Main Content */}
-      <div
-        className={cn(
-          'transition-all duration-300',
-          isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-        )}
-      >
-        {children}
+      <div className={cn('transition-all duration-300', isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0')}>
+        <div className="p-6 lg:p-8">
+          {children}
+        </div>
       </div>
     </div>
   );
